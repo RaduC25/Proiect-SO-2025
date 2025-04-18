@@ -38,6 +38,7 @@ int search_hunt_id(char* hunt_id){
     closedir(d);
     return 0;
 }
+
 void create_logged_hunt_symlink(char* hunt_id) {
     char cwd[PATH_MAX];
     if(getcwd(cwd,sizeof(cwd))==NULL){
@@ -141,6 +142,26 @@ int check_user_name(char* user_name){
    return 1;
 }
 
+void add_username(char* user_name){
+    if(user_name==NULL){
+        printf("user name-ul este incorect\n");
+        return;
+    }
+    int f=open("users.txt",O_WRONLY | O_CREAT, S_IWGRP);
+    if(f<0){
+        perror("failed to open treasure.txt");
+        return;
+    }
+    lseek(f,0,SEEK_END);
+    int size = strlen(user_name);
+    user_name[size]=' ';
+    if(write(f,user_name,size+1)!=size+1){
+        perror("error in writing into a file");
+        return;
+    }
+    close(f);
+}
+
 int make_hunt_dir(char* hunt_id){
     char s[20];
     sprintf(s,"hunt:%s",hunt_id);
@@ -222,10 +243,15 @@ void add_hunt(char* hunt_id){
             printf("User name already exists\n");
             return;
         }
+        else{
+            add_username(t.user_name);
+
+        }
     }
     else{
         make_hunt_dir(hunt_id);
         create_logged_hunt_symlink(hunt_id);
+        add_username(t.user_name);
     }
     t.treasureID=get_next_treasure_id(hunt_id);
     write_data(t,hunt_id);
@@ -271,49 +297,64 @@ void write_view_log(char* hunt_id,char*treasure_id){
     close(f);
 }
 
+int find_tresure_in_file(char* file_path, char* treasure_id){
+    char id[15]="ID:";
+    strcat(id,treasure_id);
+    int id_len=strlen(id);
+    int f=open(file_path,O_RDONLY);
+    if(f<0){
+        perror("failed to open treasure.txt");
+        return -1;
+    }
+    int size=0;
+    char *p,buffer[200];
+    int file_pos;
+    size=read(f,buffer,15);
+    buffer[size]='\0';
+    while((p=strstr(buffer,"ID:"))!=NULL && size!=0){
+        if(strncmp(p,id,id_len)==0){
+            close(f);
+            return file_pos + (p-buffer);
+        }
+        file_pos=lseek(f,MIN_TREASURE_SIZE-(strlen(p))-1,SEEK_CUR);
+        size=read(f,buffer,50);
+        buffer[size]='\0';
+    }
+    close(f);
+    return -1;
+}
+
 void view_treasure(char* hunt_id,char*treasure_id){
     if(search_hunt_id(hunt_id)==0){
         printf("This hunt doesn't exist\n");
         return;
     }
-    char file_path[100],buffer[200],*p;
+    char file_path[100],buffer[200];
     sprintf(file_path, "hunt:%s/treasure.txt", hunt_id);
-    char id[15]="ID:";
-    strcat(id,treasure_id);
-    int id_len=strlen(id);
-    strcat(id,treasure_id);
-    int f=open(file_path,O_RDONLY);
+    int seek_pos = find_tresure_in_file(file_path,treasure_id);
+    if(seek_pos==-1){
+        printf("This treasure doesn't exist in this hunt\n");
+        return;
+    }
+    int f= open(file_path,O_RDONLY);
     if(f<0){
         perror("failed to open treasure.txt");
         return;
     }
-    int size=0;
-    size=read(f,buffer,15);
-    if(size==0){
-
-    }
+    lseek(f,seek_pos,SEEK_SET);
+    int size = read(f,buffer,199);
     buffer[size]='\0';
-    while((p=strstr(buffer,"ID:"))!=NULL && size!=0){
-        if(strncmp(p,id,id_len)==0){
-            printf("Treasure:\n%s",p);
-            size=read(f,buffer,150);
-            buffer[size]='\0';
-            char*p2=strstr(buffer,"\n\n");
-            if(p2==NULL){
-                printf("naspa");
-            }
-            buffer[p2-buffer]='\0';
-            printf("%s\n",buffer);
-            close(f);
-            write_view_log(hunt_id,treasure_id);
-            return;
-        }
-        printf("se sare:%ld\n",MIN_TREASURE_SIZE-(p-buffer)-20);
-        lseek(f,MIN_TREASURE_SIZE-(strlen(p))-1,SEEK_CUR);
-        size=read(f,buffer,50);
-        buffer[size]='\0';
+    printf("Treasure:\n");
+    char *p=strstr(buffer,"\n\n");
+    if(p==NULL){
+        printf("failed to find hunt\n");
+        return;
     }
+    buffer[p-buffer]='\0';
+    printf("%s\n",buffer);
     close(f);
+    write_view_log(hunt_id,treasure_id);
+    
 }
 
 void remove_hunt(char* hunt_id){
@@ -338,45 +379,70 @@ void remove_hunt(char* hunt_id){
     }
     printf("The hunt has been removed\n");
 }
-//this part is not finished
-// void remove_treasure(char* hunt_id,char*treasure_id){
-//     if(search_hunt_id(hunt_id)==0){
-//         printf("This hunt doesn't exist\n");
-//         return;
-//     }
-//     char file_path[100],buffer[200],*p;
-//     char id[15]="ID:";
-//     strcat(id,treasure_id);
-//     int id_len=strlen(id);
-//     strcat(id,treasure_id);
-//     sprintf(file_path, "hunt:%s/treasure.txt", hunt_id);
-// }
-int check_argument(char* s){
+
+void remove_treasure(char* hunt_id,char*treasure_id){
+    if(search_hunt_id(hunt_id)==0){
+        printf("This hunt doesn't exist\n");
+        return;
+    }
+    char file_path[100],buffer[200];
+    sprintf(file_path, "hunt:%s/treasure.txt", hunt_id);
+    int seek_pos = find_tresure_in_file(file_path,treasure_id);
+    if(seek_pos==-1){
+        printf("This treasure doesn't exist in this hunt\n");
+        return;
+    }
+    int f= open(file_path,O_RDONLY);
+    if(f<0){
+        perror("failed to open treasure.txt");
+        return;
+    }
+    lseek(f,seek_pos,0);
+
+}
+int check_argument(char* s,int arg_count){
     if(s==NULL){
         return 0;
     }
-    for(int i=0;i<ARGS_NUMBER;i++){
+    int i;
+    for(i=0;i<ARGS_NUMBER;i++){
         if(strcmp(arguments[i],s)==0){
-            return 1;
+            break;
         }
     }
-    return 0;
+    if(i==ARGS_NUMBER){
+        return 0;
+    }
+    if((strcmp(s,"remove_treasure")==0 || strcmp(s,"view")==0)){
+        if(arg_count!=4){
+            printf("Incorrect usage of the arguments\n");
+            return 0;
+        }
+        return 1;
+    } 
+    if(strcmp(s,"help")==0 && arg_count!=2){
+        if(arg_count!=2){
+            printf("Incorrect usage of the arguments\n");
+            return 0;
+        }
+        return 1;
+    }
+    if(arg_count!=3){
+        return 0;
+    }
+    return 1;
 }
 
 
 int main(int argc, char** argv){
-    if(argc<3 || argc>4){
-        write(STDOUT_FILENO,"Incorrect usage\n",16);
+    if(argc<2 || argc>4){
+        printf("Incorrect usage\n");
         return 1;
     }
-    if(check_argument(argv[1])==0){
-        write(STDOUT_FILENO,"Wrong arguments\n",16);
+    if(check_argument(argv[1],argc)==0){
+        printf("Wrong arguments\n");
         return 1;
     }
-    if((strcmp(argv[1],"remove_treasure")==0 || strcmp(argv[1],"view")==0) && argc!=4){
-        write(STDOUT_FILENO,"Incorrect usage of the arguments\n",33);
-        return 1;
-    } 
     if(strcmp(argv[1],"add")==0){
         add_hunt(argv[2]);
     }
