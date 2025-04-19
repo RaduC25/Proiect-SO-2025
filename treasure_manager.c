@@ -15,6 +15,8 @@
 #define ARGS_NUMBER 6
 #define MIN_TREASURE_SIZE 62
 const char arguments[6][20]={"add","list","remove_treasure","remove_hunt","view","help"};
+
+
 //search if the hunt exists
 int search_hunt_id(char* hunt_id){
     char cwd[PATH_MAX];
@@ -264,7 +266,7 @@ void list_hunt(char* hunt_id){
         printf("This hunt doesn't exist\n");
         return;
     }
-    char file1_path[100],buffer[1000],file2_path[100];
+    char file1_path[100],buffer[BUFFER_SIZE],file2_path[100];
     sprintf(file1_path, "hunt:%s/treasure.txt", hunt_id);
     struct stat sbuf;
     stat(file1_path,&sbuf);
@@ -419,7 +421,7 @@ void remove_treasure(char* hunt_id,char*treasure_id){
         return;
     }
     char file_path[100],buffer[1000];
-    sprintf(file_path, "hunt:%s/treasure.txt", hunt_id);
+    sprintf(file_path, "hunt:%s/treasure trea.txt", hunt_id);
     int seek_pos = find_tresure_in_file(file_path,treasure_id); //returns the position where the treasure start in the file
     if(seek_pos==-1){
         printf("This treasure doesn't exist in this hunt\n");
