@@ -5,7 +5,7 @@
 
 void start_monitor(){
     if(monitor_running){
-        printf("monitor already running\n");
+        write(STDOUT_FILENO,"monitor already running\n",25);
         return;
     }
 
@@ -27,21 +27,23 @@ void start_monitor(){
     }
     close(fd_pipe[0]);
     monitor_running=1;
-    printf("[monitor] has started with PID:%d \n",monitor_pid);
+    char buffer[50]="";
+    sprintf(buffer,"[monitor] has started with PID: %d\n",monitor_pid);
+    write(STDOUT_FILENO,buffer,strlen(buffer));
 }
 
 void stop_monitor(){
     if(monitor_running==0){
-        printf("[monitor] is not running\n");
+        write(STDOUT_FILENO,"[monitor] is not running\n",26);
         return;
     }
     kill(monitor_pid,SIGTERM);
     monitor_running = 0;
-    printf("[monitor] has been stopped\n");
+    write(STDOUT_FILENO,"[monitor] has been stopped\n",28);
 }
 void exit_program(){
     if(monitor_running){
-        printf("monitor is still running\n");
+        write(STDOUT_FILENO,"monitor is still running\n",26);
         return;
     }
     
@@ -57,11 +59,11 @@ int check_command(char* buffer){
 
 void send_command(int command_nr){
     if(monitor_running==0){
-        printf("[monitor] is not running\n");
+        write(STDOUT_FILENO,"[monitor] is not running\n",26);
         return;
     }
     if(command_nr<1 || command_nr>3){
-        printf("command can't be send\n");
+        write(STDOUT_FILENO,"command can't be send\n",23);
         return;
     }
     int size=write(fd_pipe[1],commands[command_nr],strlen(commands[command_nr]));
@@ -95,12 +97,12 @@ void do_command(int command_nr){
     }
 }
 int main(){
-    printf("Write command:\n");
+    write(STDOUT_FILENO,"The program has started\n\nThe aveilable commands are:\n\n- start_monitor\n\n- list_hunts: list the hunts and the total number of treasures in each\n\n- list_treasures: show the information about all treasures in a hunt\n\n- view_treasure: show the information about a treasure in hunt\n\n- stop_monitor\n\n- exit\n\nWrite command:\n",316);
     char buffer[100]="";
     int command_number=0;
     int size = read(STDIN_FILENO,buffer,99);
     if(size<=0){
-        printf("reading error\n");
+        write(STDOUT_FILENO,"reading error\n",15);
     }
     else{
         buffer[size]='\0';
@@ -114,14 +116,14 @@ int main(){
         }
         size=read(STDIN_FILENO,buffer,99);
         if(size<=0){
-        printf("reading error\n");
+        write(STDOUT_FILENO,"reading error\n",15);
         }
         else{
             buffer[size]='\0';
         }
     }
     if(command_number==5){
-        printf("The program has been stopped\n");
+        write(STDOUT_FILENO,"The program has been stopped\n",30);
     }
     return 0;
 }
