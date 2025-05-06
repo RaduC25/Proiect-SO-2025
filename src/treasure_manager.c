@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "treasure.h"
 
-
+//returns the current directory
 DIR* open_current_dir(){
     char cwd[PATH_MAX];
     if(getcwd(cwd,sizeof(cwd))==NULL){
@@ -105,25 +105,20 @@ void create_logged_hunt_symlink(char* hunt_id) {
             char logged_hunt_path[50];
             create_logs_path(hunt_id);
             strcpy(logged_hunt_path,logs_path);
-            write("%s\n",entry->d_name);
             struct stat st;
             if (stat(logged_hunt_path, &st) == 0) {
-                write("%s\n",entry->d_name);
                 char symlink_name[50];
                 sprintf(symlink_name, "%s/logged_hunt-%s",LOGS_PATH,hunt_id);
-                write("%s\n",symlink_name);
                 // Try to create symlink (ignore if it already exists)
                 if (symlink(logged_hunt_path, symlink_name) != 0) {
-                    write("symlink error\n");
+                    printf("symlink error\n");
                 } else {
-                    write("Created symlink: %s -> %s\n", symlink_name, logged_hunt_path);
+                    printf("Created symlink: %s -> %s\n", symlink_name, logged_hunt_path);
                 }
-                write("aici2\n");
             }
         }
         entry = readdir(d);
     }
-    write("aici3\n");
     closedir(d);
 }
 //returns the next treasure id in a specified hunt
@@ -137,7 +132,7 @@ unsigned get_next_treasure_id(char* hunt_id) {
         return 0;
     }
     char buffer[20];
-    ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+    int bytes_read = read(fd, buffer, sizeof(buffer) - 1);
     if (bytes_read <= 0) {
         perror("read logs.txt failed");
         close(fd);
@@ -160,6 +155,63 @@ unsigned get_next_treasure_id(char* hunt_id) {
     return current_id;
 }
 
+unsigned get_total_hunts(char* hunt_id){
+    char file_path[FILE_PATH_SIZE];
+    create_logs_path(hunt_id);
+    strcpy(file_path,logs_path);
+    int fd = open(file_path, O_RDONLY);
+    if (fd < 0) {
+        perror("open logs.txt failed");
+        return 0;
+    }
+    char buffer[BUFFER_SIZE/10];
+    int size = read(fd,buffer,BUFFER_SIZE/10 - 1);
+    if (size <= 0) {
+        perror("read logs.txt failed");
+        close(fd);
+        return 0;
+    }
+    buffer[size]='\0';
+    char *p=strstr(buffer,"TOTAL TREASURES:");
+    if(p==NULL){
+        perror("strstr");
+        close(fd);
+        return 0;
+    }
+    unsigned current_hunts;
+    sscanf(p,"TOTAL TREASURES:%u",&current_hunts);
+    return current_hunts;
+}
+
+void modify_total_hunts(char* hunt_id, unsigned total){
+    char file_path[FILE_PATH_SIZE];
+    create_logs_path(hunt_id);
+    strcpy(file_path,logs_path);
+    int fd = open(file_path, O_RDWR);
+    if (fd < 0) {
+        perror("open logs.txt failed");
+        return;
+    }
+    char buffer[BUFFER_SIZE/10];
+    int size = read(fd,buffer,BUFFER_SIZE/10 - 1);
+    if (size <= 0) {
+        perror("read logs.txt failed");
+        close(fd);
+        return;
+    }
+    buffer[size]='\0';
+
+    unsigned current_id = 0;
+    sscanf(buffer, "ID COUNT:%u", &current_id);
+    sprintf(buffer,"ID COUNT:%u\nTOTAL TREASURES:%u\n",current_id,total);
+    lseek(fd,0,SEEK_SET);
+    if(write(fd,buffer,strlen(buffer)-1)!=strlen(buffer)-1){
+        perror("write logs.txt failed");
+        close(fd);
+        return;
+    }
+    close(fd);
+}
 
 int check_data(Treasure t){
     if(t.clue_text[strlen(t.clue_text)-2]=='\n'){
@@ -200,7 +252,7 @@ int check_user_name(char* user_name){
 
 void add_username(char* user_name){
     if(user_name==NULL){
-        write("user name-ul este incorect\n");
+        printf("user name-ul este incorect\n");
         return;
     }
     int f=open("users.txt",O_WRONLY | O_CREAT, S_IWGRP);
@@ -242,7 +294,7 @@ int make_hunt_dir(char* hunt_id){
         perror("failed to open logs.txt");
         return 0;
     }
-    write(f2,"ID COUNT:0\n",11);
+    write(f2,"ID COUNT:0\nTOTAL TREASURES:0\n",29);
     close(f2);
     return 1;
 }
@@ -281,24 +333,24 @@ void write_data(Treasure t,char* hunt_id){
 }
 //ads a new hunt, if the username is new
 void add_hunt(char* hunt_id){
-    write("Please type the treasure data:\n");
+    printf("Please type the treasure data:\n");
     Treasure t={0};
     if(scanf("%29s %f %f %d",t.user_name,&t.longitude,&t.latitude,&t.value)!=4){
-        write("Wrong data\n");
+        printf("Wrong data\n");
         return;
     }
     getchar();
     if(fgets(t.clue_text,99,stdin)==NULL){
-        write("Wrong data\n");
+        printf("Wrong data\n");
         return;
     }
     if(check_data(t)==0){
-        write("Wrong data\n");
+        printf("Wrong data\n");
         return;
     }
     if(search_hunt_id(hunt_id)){
         if(check_user_name(t.user_name)==0){
-            write("User name already exists\n");
+            printf("User name already exists\n");
             return;
         }
         else{
@@ -310,14 +362,15 @@ void add_hunt(char* hunt_id){
         create_logged_hunt_symlink(hunt_id);
         add_username(t.user_name);
     }
+    modify_total_hunts(hunt_id,get_total_hunts(hunt_id) + 1);
     t.treasureID=get_next_treasure_id(hunt_id);
     write_data(t,hunt_id);
-    write("\nThe treasure, with the ID: %d was succesfully added to hunt %s\n",t.treasureID,hunt_id);
+    printf("\nThe treasure, with the ID: %d was succesfully added to hunt %s\n",t.treasureID,hunt_id);
 }
 //prints the entire hunt
 void list_hunt(char* hunt_id){
     if(search_hunt_id(hunt_id)==0){
-        write("This hunt doesn't exist\n");
+        printf("This hunt doesn't exist\n");
         return;
     }
     char file1_path[100],buffer[BUFFER_SIZE],file2_path[100];
@@ -325,7 +378,7 @@ void list_hunt(char* hunt_id){
     strcpy(file1_path,treasure_path);
     struct stat sbuf;
     stat(file1_path,&sbuf);
-    write("HUNT ID: %s\nTreasure file size: %lld\n",hunt_id,sbuf.st_size);
+    printf("HUNT ID: %s\nTreasure file size: %lld\n",hunt_id,sbuf.st_size);
     create_logs_path(hunt_id);
     strcpy(file2_path,treasure_path);
     int file2=open(file2_path,O_RDONLY);
@@ -340,7 +393,7 @@ void list_hunt(char* hunt_id){
         }
     }
     if(start!=0){
-        write("Last modification: %s\n",buffer + start +1);
+        printf("Last modification: %s\n",buffer + start +1);
     }
     close(file2);
     int file1=open(file1_path,O_RDONLY);
@@ -350,7 +403,7 @@ void list_hunt(char* hunt_id){
     }
     while((size=read(file1,buffer,999))!=0){
         buffer[size]='\0';
-        write("%s\n",buffer);
+        printf("%s\n",buffer);
     }
     close(file1);
 }
@@ -358,7 +411,7 @@ void list_hunt(char* hunt_id){
 void write_view_log(char* hunt_id,char*treasure_id){
     char file_path[100],s[100];
     create_logs_path(hunt_id);
-    strcpy(file_path,treasure_path);
+    strcpy(file_path,logs_path);
     int size=sprintf(s,"treasure: %s, from hunt: %s was printed\n",treasure_id,hunt_id);
     int f=open(file_path,O_WRONLY, S_IWGRP);
     if(f<0){
@@ -402,7 +455,7 @@ int find_tresure_in_file(char* file_path, char* treasure_id){
 
 void view_treasure(char* hunt_id,char*treasure_id){
     if(search_hunt_id(hunt_id)==0){
-        write("This hunt doesn't exist\n");
+        printf("This hunt doesn't exist\n");
         return;
     }
     char file_path[100],buffer[200];
@@ -410,7 +463,7 @@ void view_treasure(char* hunt_id,char*treasure_id){
     strcpy(file_path,treasure_path);
     int seek_pos = find_tresure_in_file(file_path,treasure_id);//returns the position where the treasure start in the file
     if(seek_pos==-1){
-        write("This treasure doesn't exist in this hunt\n");
+        printf("This treasure doesn't exist in this hunt\n");
         return;
     }
     int f= open(file_path,O_RDONLY);
@@ -421,14 +474,14 @@ void view_treasure(char* hunt_id,char*treasure_id){
     lseek(f,seek_pos,SEEK_SET);
     int size = read(f,buffer,199);
     buffer[size]='\0';
-    write("Treasure:\n");
+    printf("Treasure:\n");
     char *p=strstr(buffer,"\n\n");
     if(p==NULL){
-        write("failed to find hunt\n");
+        printf("failed to find hunt\n");
         return;
     }
     buffer[p-buffer]='\0';
-    write("%s\n",buffer);
+    printf("%s\n",buffer);
     close(f);
     write_view_log(hunt_id,treasure_id);
     
@@ -436,29 +489,29 @@ void view_treasure(char* hunt_id,char*treasure_id){
 
 void remove_hunt(char* hunt_id){
     if(search_hunt_id(hunt_id)==0){
-        write("This hunt doesn't exists\n");
+        printf("This hunt doesn't exists\n");
         return;
     }
     char file_path[50];
     create_treasure_path(hunt_id);
     strcpy(file_path,treasure_path);
     if(unlink(file_path)!=0){
-        write("Error at removing a file 1 \n");
+        printf("Error at removing a file 1 \n");
         return;
     }
     create_logs_path(hunt_id);
     strcpy(file_path,logs_path);
     if(unlink(file_path)!=0){
-        write("Error at removing a file 2 \n");
+        printf("Error at removing a file 2 \n");
         return;
     }
     char dir_path[50];
     sprintf(dir_path,"%s%s",HUNT_DIR_PATH,hunt_id);
     if(rmdir(dir_path)!=0){
-        write("error at removing directory\n");
+        printf("error at removing directory\n");
         return;
     }
-    write("The hunt has been removed\n");
+    printf("The hunt has been removed\n");
 }
 
 
@@ -466,7 +519,7 @@ void remove_hunt(char* hunt_id){
 void write_remove_log(char* hunt_id,char*treasure_id){
     char file_path[100],s[100];
     create_logs_path(hunt_id);
-    strcpy(file_path,treasure_path);
+    strcpy(file_path,logs_path);
     int size=sprintf(s,"treasure: %s, from hunt: %s was deleted\n",treasure_id,hunt_id);
     int f=open(file_path,O_WRONLY, S_IWGRP);
     if(f<0){
@@ -482,7 +535,7 @@ void write_remove_log(char* hunt_id,char*treasure_id){
 
 void remove_treasure(char* hunt_id,char*treasure_id){
     if(search_hunt_id(hunt_id)==0){
-        write("This hunt doesn't exist\n");
+        printf("This hunt doesn't exist\n");
         return;
     }
     char file_path[100],buffer[1000];
@@ -490,7 +543,7 @@ void remove_treasure(char* hunt_id,char*treasure_id){
     strcpy(file_path,treasure_path);
     int seek_pos = find_tresure_in_file(file_path,treasure_id); //returns the position where the treasure start in the file
     if(seek_pos==-1){
-        write("This treasure doesn't exist in this hunt\n");
+        printf("This treasure doesn't exist in this hunt\n");
         return;
     }
     int f= open(file_path,O_RDWR,S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP); //the file is open for read and write in the same time
@@ -503,7 +556,7 @@ void remove_treasure(char* hunt_id,char*treasure_id){
     buffer[size]='\0';
     char *p=strstr(buffer,"\n\n");
     if(p==NULL){
-        write("error at deleting a treasure from the file\n");
+        printf("error at deleting a treasure from the file\n");
         return;
     }
     int gap = p - buffer + 2; // this represent the number of characters that are deleted
@@ -519,9 +572,27 @@ void remove_treasure(char* hunt_id,char*treasure_id){
     }
     ftruncate(f, write_pos);
     write_remove_log(hunt_id,treasure_id);
-    write("The treasure with the id: %s, from hunt: %s has been deleted\n",treasure_id,hunt_id);
+    printf("The treasure with the id: %s, from hunt: %s has been deleted\n",treasure_id,hunt_id);
     close(f);
+    modify_total_hunts(hunt_id,get_total_hunts(hunt_id) - 1);
+}
 
+void print_all_hunts(){
+    DIR* d = opendir(HUNTS_PATH);
+    if(d==NULL){
+        perror("opendir error");
+        return;
+    }
+    struct dirent* entry = readdir(d);
+    printf("These are all the current hunts:\n");
+    while(entry!=NULL){
+        if(entry->d_type == DT_DIR && strncmp(entry->d_name,"hunt:",5)==0){
+            get_total_hunts(entry->d_name + 5);
+            printf("\n%s -- %u",entry->d_name,get_total_hunts(entry->d_name + 5));
+        }
+        entry = readdir(d);
+    }
+    
 }
 
 //this function checks if the arguments are correct
@@ -544,7 +615,7 @@ int check_argument(char* s,int arg_count){
         }
         return 3;
     } 
-    if(strcmp(s,"help")==0){
+    if(strcmp(s,"help")==0 || strcmp(s,"all_hunts")==0){
         if(arg_count!=2){
             return 0;
         }
@@ -556,47 +627,54 @@ int check_argument(char* s,int arg_count){
     return 2;
 }
 
-void appeal_2_arg_function(char* arg1,char* arg2){
-    if(strcmp(arg1,"add")==0){
-        add_hunt(arg2);
-    }
-    if(strcmp(arg1,"list")==0){
-        list_hunt(arg2);
-    }
-    if(strcmp(arg1,"remove_hunt")==0){
-        remove_hunt(arg2);
-    }
+void help(){
+    printf("\nThe following arguments could be used:\n");
+    printf("\nadd <hunt_id>: Add a new treasure to the specified hunt. If the hunt doesn't exist, it will be created. The treasure data are introduced fromthe standard input.\n");
+    printf("\nlist <hunt_id>: List all treasures in the specified hunt.\n");
+    printf("\nview <hunt_id> <id>: View details of a specific treasure.\n");
+    printf("\nremove_treasure <hunt_id> <id>: Remove a treasure  from a hunt, if the hunt and the treasure exist.\n");
+    printf("\nremove_hunt <hunt_id>: Remove an entire hunt, if the hunt exists\n\n");
 }
 
-void help(){
-    write("\nThe following arguments could be used:\n");
-    write("\nadd <hunt_id>: Add a new treasure to the specified hunt. If the hunt doesn't exist, it will be created. The treasure data are introduced fromthe standard input.\n");
-    write("\nlist <hunt_id>: List all treasures in the specified hunt.\n");
-    write("\nview <hunt_id> <id>: View details of a specific treasure.\n");
-    write("\nremove_treasure <hunt_id> <id>: Remove a treasure  from a hunt, if the hunt and the treasure exist.\n");
-    write("\nremove_hunt <hunt_id>: Remove an entire hunt, if the hunt exists\n\n");
+void appeal_function(char** argv,int argc){
+    if(strcmp(argv[1],"add")==0  && argc==3){
+        add_hunt(argv[2]);
+        return;
+    }
+    if(strcmp(argv[1],"list")==0 && argc==3){
+        list_hunt(argv[2]);
+        return;
+    }
+    if(strcmp(argv[1],"remove_hunt")==0 && argc==3){
+        remove_hunt(argv[2]);
+        return;
+    }
+    if(strcmp(argv[1],"remove_treasure")==0 && argc==4){
+        remove_treasure(argv[2],argv[3]);
+        return;
+    }
+    if(strcmp(argv[1],"view")==0 && argc==4){
+        view_treasure(argv[2],argv[3]);
+        return;
+    }
+    if(strcmp(argv[1],"help")==0 && argc==2){
+        help();
+    }
+    if(strcmp(argv[1],"all_hunts")==0 && argc==2){
+        print_all_hunts();
+    }
 }
 
 int main(int argc, char** argv){
     if(argc<2 || argc>4){
-        write("Incorrect usage\nWrong number of arguments\n");
+        printf("Incorrect usage\nWrong number of arguments\nUse help for more informartions\n");
         return 1;
     }
     int value = check_argument(argv[1],argc);
-    switch(value){
-        case 0:
-            write("Wrong arguments\nUse help for more informartions\n");
-            return 1;
-        case 1:
-            help();
-            break;
-        case 2:
-            appeal_2_arg_function(argv[1],argv[2]);
-            break;
-        case 3:
-            if(strcmp(argv[1],"view")==0) view_treasure(argv[2],argv[3]);
-            else remove_treasure(argv[2],argv[3]);
-            break;
+    if(value==0){
+        printf("Wrong arguments\nUse help for more informartions\n");
+        return 0;
     }
+    appeal_function(argv,argc);
     return 0;
 }

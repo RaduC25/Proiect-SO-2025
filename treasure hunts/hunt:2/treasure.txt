@@ -1,0 +1,7 @@
+
+ID:0
+user name:2 
+latitude:2.00--longitude:2.00
+clue:2
+value:2
+

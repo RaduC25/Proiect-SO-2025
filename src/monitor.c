@@ -10,6 +10,7 @@
 const char monitor_commands[3][20]={"list_hunts","list_treasures","view_treasure"};
 
 int received_sigusr1 = 0, received_sigusr2 = 0;
+struct sigaction sa1 = {0}, sa2 ={0};
 
 void handle_sigusr1(int sig) {
     received_sigusr1 = 1;
@@ -19,14 +20,54 @@ void handle_sigusr2(int sig) {
     received_sigusr2 = 1;
 }
 
-void list_hunts();
+void list_hunts(){
+    int pid=-1;
+    if((pid=fork())<0){
+        perror("fork error");
+        exit(1);
+    }
+    if(pid==0){
+        execlp("./p1","./p1","all_hunts",NULL);
+        perror("execlp");
+        exit(2);
+    }
+    usleep(10000);
+    write(STDOUT_FILENO,"[monitor] The list_hunts command has been executed\n",52);
+}
 
-void list_treasures(const char* hunt_id);
+void list_treasures(const char* hunt_id){
+    int pid=-1;
+    if((pid=fork())<0){
+        perror("fork error");
+        exit(1);
+    }
+    if(pid==0){
+        execlp("./p1","./p1","list",hunt_id,NULL);
+        perror("execlp");
+        exit(2);
+    }
+    usleep(10000);
+    write(STDOUT_FILENO,"[monitor] The list_treasures command has been executed\n",56);
+}
 
-void view_treasure(const char* hunt_id, const char* treasure_id);
+void view_treasure(const char* hunt_id, const char* treasure_id){
+    int pid=-1;
+    if((pid=fork())<0){
+        perror("fork error");
+        exit(1);
+    }
+    if(pid==0){
+        execlp("./p1","./p1","view",hunt_id,treasure_id,NULL);
+        perror("execlp");
+        exit(2);
+    }
+    usleep(10000);
+    write(STDOUT_FILENO,"\n[monitor] The view_treasure command has been executed\n",56);
+}
 
 void choose_command( char* buffer) {
-    if (strcmp(buffer, monitor_commands[0]) == 0) {
+    printf("-%s\n",buffer);
+    if (strncmp(buffer, monitor_commands[0],strlen(monitor_commands[0])) == 0) {
         list_hunts();
         return;
     }
@@ -43,24 +84,13 @@ void choose_command( char* buffer) {
     write(STDOUT_FILENO,"[monitor] The command is unknown\n",34);
 }
 
-int main() {
-    struct sigaction sa1 = {0};
-    sa1.sa_handler = handle_sigusr1;
-    sigaction(SIGUSR1, &sa1, NULL);
-
-    struct sigaction sa2 = {0};
-    sa2.sa_handler = handle_sigusr2;
-    sigaction(SIGUSR2, &sa2, NULL);
-
-    write("[monitor] Ready and waiting for commands...\n");
-
-    char stdin_buffer[MAX_CMD_LEN]="";
-
+void monitor_loop(){
+    char stdin_buffer[200]="";
     while (1) {
         pause(); // Wait for a signal
 
         if (received_sigusr2) {
-            write("[monitor] Stop signal received. Exiting...\n");
+            write(STDOUT_FILENO,"[monitor] Stop signal received. Exiting...\n",44);
             usleep(100000); // Sleep before exiting
             break;
         }
@@ -70,11 +100,27 @@ int main() {
             int size = read(STDIN_FILENO, stdin_buffer, sizeof(stdin_buffer)-1);
             if(size>0){
                 stdin_buffer[size]='\0';
-                write("%s\n",stdin_buffer);
                 choose_command(stdin_buffer);
             }
         }
     }
+}
+
+void init_signals(){
+    sa1.sa_handler = handle_sigusr1;
+    sigaction(SIGUSR1, &sa1, NULL);
+
+    sa2.sa_handler = handle_sigusr2;
+    sigaction(SIGUSR2, &sa2, NULL);
+
+}
+
+int main() {
+    write(STDOUT_FILENO,"[monitor] Ready and waiting for commands...\n",45);
+
+    init_signals();
+
+    monitor_loop();
 
     return 0;
 }

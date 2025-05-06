@@ -37,8 +37,9 @@ void stop_monitor(){
         write(STDOUT_FILENO,"[monitor] is not running\n",26);
         return;
     }
-    kill(monitor_pid,SIGTERM);
+    kill(monitor_pid,SIGUSR2);
     monitor_running = 0;
+    usleep(20000);
     write(STDOUT_FILENO,"[monitor] has been stopped\n",28);
 }
 void exit_program(){
@@ -57,7 +58,7 @@ int check_command(char* buffer){
     return -1;
 }
 
-void send_command(int command_nr){
+void send_command(int command_nr,char* buffer){
     if(monitor_running==0){
         write(STDOUT_FILENO,"[monitor] is not running\n",26);
         return;
@@ -66,27 +67,31 @@ void send_command(int command_nr){
         write(STDOUT_FILENO,"command can't be send\n",23);
         return;
     }
-    int size=write(fd_pipe[1],commands[command_nr],strlen(commands[command_nr]));
-    if(size!=strlen(commands[command_nr])){
+    int size=write(fd_pipe[1],buffer,strlen(buffer));
+    if(size!=strlen(buffer)){
         perror("error at writing");
         return;
     }
     kill(monitor_pid, SIGUSR1);
 }
 
-void do_command(int command_nr){
+void help(){
+    write(STDOUT_FILENO,"The program has started\n\nThe aveilable commands are:\n\n- start_monitor\n\n- list_hunts: list the hunts and the total number of treasures in each\n\n- list_treasures: show the information about all treasures in a hunt\n\n- view_treasure: show the information about a treasure in hunt\n\n- stop_monitor\n\n- exit\n\nWrite command:\n",316);
+}
+
+void do_command(int command_nr,char* buffer){
     switch(command_nr){
         case 0:
             start_monitor();
             break;
         case 1:
-            send_command(1);
+            send_command(1,buffer);
             break;
         case 2:
-            send_command(2);
+            send_command(2,buffer);
             break;
         case 3:
-            send_command(3);
+            send_command(3,buffer);
             break;
         case 4:
             stop_monitor();
@@ -97,7 +102,7 @@ void do_command(int command_nr){
     }
 }
 int main(){
-    write(STDOUT_FILENO,"The program has started\n\nThe aveilable commands are:\n\n- start_monitor\n\n- list_hunts: list the hunts and the total number of treasures in each\n\n- list_treasures: show the information about all treasures in a hunt\n\n- view_treasure: show the information about a treasure in hunt\n\n- stop_monitor\n\n- exit\n\nWrite command:\n",316);
+    help();
     char buffer[100]="";
     int command_number=0;
     int size = read(STDIN_FILENO,buffer,99);
@@ -112,7 +117,7 @@ int main(){
             printf("Unknown command: %s\n",buffer);    
         }
         else{
-            do_command(command_number);
+            do_command(command_number,buffer);
         }
         size=read(STDIN_FILENO,buffer,99);
         if(size<=0){

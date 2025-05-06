@@ -10,11 +10,13 @@
 
 #ifndef TREASURE_H
 #define TREASURE_H
+
 #define USER_NAME_SIZE 30
 #define CLUE_SIZE 100
 #define BUFFER_SIZE 1000
-#define ARGS_NUMBER 6
+#define ARGS_NUMBER 7
 #define MIN_TREASURE_SIZE 62
+#define FILE_PATH_SIZE 100
 
 #define HUNTS_PATH "treasure hunts"
 #define HUNT_DIR_PATH "treasure hunts/hunt:"
@@ -23,7 +25,7 @@
 #define LOGS_PATH "logs"
 
 
-const char arguments[6][20]={"add","list","remove_treasure","remove_hunt","view","help"};
+const char arguments[ARGS_NUMBER][20]={"add","list","remove_treasure","remove_hunt","view","help","all_hunts"};
 char static treasure_path[100]="",logs_path[100]="";
 
 typedef struct{
