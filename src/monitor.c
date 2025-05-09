@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <fcntl.h>
+#include "treasure_hub.h"
 
 #define MAX_CMD_LEN 256
 
@@ -84,8 +85,22 @@ void choose_command( char* buffer) {
     write(STDOUT_FILENO,"[monitor] The command is unknown\n",34);
 }
 
+void read_file(){
+    int file = open(COMMAND_FILE,O_RDONLY,S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IWOTH | S_IROTH);
+    if(file<0){
+        perror("Failed to open command file");
+        return;
+    }
+    char buffer[BUFFER_SIZE];
+    int size=read(file,buffer,99);
+    if(size<1){
+        perror("error at reading from command file");
+        return;
+    }
+    choose_command(buffer);
+}
+
 void monitor_loop(){
-    char stdin_buffer[200]="";
     while (1) {
         pause(); // Wait for a signal
 
@@ -97,11 +112,7 @@ void monitor_loop(){
 
         if (received_sigusr1) {
             received_sigusr1 = 0;
-            int size = read(STDIN_FILENO, stdin_buffer, sizeof(stdin_buffer)-1);
-            if(size>0){
-                stdin_buffer[size]='\0';
-                choose_command(stdin_buffer);
-            }
+            read_file();
         }
     }
 }

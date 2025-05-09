@@ -588,7 +588,8 @@ void print_all_hunts(){
     while(entry!=NULL){
         if(entry->d_type == DT_DIR && strncmp(entry->d_name,"hunt:",5)==0){
             get_total_hunts(entry->d_name + 5);
-            printf("\n%s -- %u",entry->d_name,get_total_hunts(entry->d_name + 5));
+            printf("\n");
+            printf("%s -- %u treasures\n",entry->d_name,get_total_hunts(entry->d_name + 5));
         }
         entry = readdir(d);
     }

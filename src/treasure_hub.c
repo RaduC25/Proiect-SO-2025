@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "treasure_hub.h"
+#include <sys/wait.h>
 
 
 void start_monitor(){
@@ -9,23 +10,15 @@ void start_monitor(){
         return;
     }
 
-    if (pipe(fd_pipe) == -1) {
-        perror("[hub] pipe failed");
-        exit(1);
-    }
-
     if( ( monitor_pid=fork() ) < 0){
         perror("fork error");
         exit(1);
     }
     if(monitor_pid==0){
-        close(fd_pipe[1]);
-        dup2(fd_pipe[0],STDIN_FILENO);
         execlp("./m","./m",NULL);
         perror("execlp failed");
         exit(-1);
     }
-    close(fd_pipe[0]);
     monitor_running=1;
     char buffer[50]="";
     sprintf(buffer,"[monitor] has started with PID: %d\n",monitor_pid);
@@ -37,7 +30,12 @@ void stop_monitor(){
         write(STDOUT_FILENO,"[monitor] is not running\n",26);
         return;
     }
-    kill(monitor_pid,SIGUSR2);
+    kill(monitor_pid,SIGTERM);
+    int status=0;
+    wait(&status);
+    if(!(WIFEXITED(status))){
+        write(STDOUT_FILENO,"The process hasn't treminated normally.\n",41);
+    }
     monitor_running = 0;
     usleep(20000);
     write(STDOUT_FILENO,"[monitor] has been stopped\n",28);
@@ -67,16 +65,22 @@ void send_command(int command_nr,char* buffer){
         write(STDOUT_FILENO,"command can't be send\n",23);
         return;
     }
-    int size=write(fd_pipe[1],buffer,strlen(buffer));
-    if(size!=strlen(buffer)){
-        perror("error at writing");
+    int file = open(COMMAND_FILE,O_CREAT |  O_WRONLY,S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IWOTH | S_IROTH);
+    if(file<0){
+        perror("Failed to open command file ok ");
         return;
     }
+    int size=write(file,buffer,strlen(buffer));
+    if(size!=strlen(buffer)){
+        perror("error at writing in command file");
+        return;
+    }
+    close(file);
     kill(monitor_pid, SIGUSR1);
 }
 
 void help(){
-    write(STDOUT_FILENO,"The program has started\n\nThe aveilable commands are:\n\n- start_monitor\n\n- list_hunts: list the hunts and the total number of treasures in each\n\n- list_treasures: show the information about all treasures in a hunt\n\n- view_treasure: show the information about a treasure in hunt\n\n- stop_monitor\n\n- exit\n\nWrite command:\n",316);
+    write(STDOUT_FILENO,"The program has started\n\nThe available commands are:\n\n- start_monitor\n\n- list_hunts: list the hunts and the total number of treasures in each\n\n- list_treasures: show the information about all treasures in a hunt\n\n- view_treasure: show the information about a treasure in hunt\n\n- stop_monitor\n\n- exit\n\nWrite command:\n",316);
 }
 
 void do_command(int command_nr,char* buffer){

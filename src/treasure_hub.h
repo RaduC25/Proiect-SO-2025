@@ -4,7 +4,8 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-
+#define BUFFER_SIZE 100
+#define COMMAND_FILE "command_file.txt"
 #define COMMANDS_NUMBER 6
 const char commands[COMMANDS_NUMBER][20]={"start_monitor","list_hunts","list_treasures","view_treasure","stop_monitor","exit"};
 
