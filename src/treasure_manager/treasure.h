@@ -7,6 +7,8 @@
 #include <dirent.h>
 #include <limits.h>
 #include <errno.h>
+#include "../directories_utils/directories_utils.h"
+
 
 #ifndef TREASURE_H
 #define TREASURE_H
@@ -18,19 +20,13 @@
 #define MIN_TREASURE_SIZE 62
 #define FILE_PATH_SIZE 100
 
-#define HUNTS_PATH "treasure hunts"
-#define HUNT_DIR_PATH "treasure hunts/hunt:"
-#define TREASURE_FILE_NAME "/treasure.txt"
-#define LOGS_FILE_NAME "/logs.txt"
-#define LOGS_PATH "logs"
 
-
-const char arguments[ARGS_NUMBER][20]={"add","list","remove_treasure","remove_hunt","view","help","all_hunts"};
+const char arguments_cmd[ARGS_NUMBER][20]={"add","list","remove_treasure","remove_hunt","view","help","all_hunts"};
 char static treasure_path[100]="",logs_path[100]="";
 
 typedef struct{
     unsigned  treasureID;
-    char user_name[USER_NAME_SIZE];
+    char user_name[USER_NAME_SIZE+1];
     float longitude,latitude;
     char clue_text[CLUE_SIZE];
     int value;
