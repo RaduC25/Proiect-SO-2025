@@ -8,6 +8,7 @@ BIN_DIR = bin
 TREASURE_HUB_SRC = $(SRC_DIR)/treasure_hub
 TREASURE_MANAGER_SRC = $(SRC_DIR)/treasure_manager
 UTILS_SRC = $(SRC_DIR)/directories_utils
+LOGS_SRC = $(TREASURE_MANAGER_SRC)/write_logs
 
 # Output binaries
 TREASURE_HUB = $(BIN_DIR)/treasure_hub
@@ -40,7 +41,7 @@ $(BIN_DIR)/monitor.o: $(TREASURE_HUB_SRC)/monitor.c
 $(BIN_DIR)/treasure_manager.o: $(TREASURE_MANAGER_SRC)/treasure_manager.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BIN_DIR)/write_logs.o: $(TREASURE_MANAGER_SRC)/write_logs.c
+$(BIN_DIR)/write_logs.o: $(LOGS_SRC)/write_logs.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Link executables
