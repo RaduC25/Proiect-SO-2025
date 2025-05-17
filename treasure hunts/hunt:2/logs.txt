@@ -1,3 +1,0 @@
-ID COUNT:1
-TOTAL TREASURES:1
-added hunt with id: 0 and username: 2 

@@ -1,7 +1,0 @@
-ID COUNT:3
-TOTAL TREASURES:2
-added hunt with id: 0 and username: 1 
-added hunt with id: 1 and username: 122 
-added hunt with id: 2 and username: 124 
-treasure: 1, from hunt: 1 was printed
-treasure: 1, from hunt: 1 was deleted
