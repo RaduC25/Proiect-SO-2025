@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "treasure.h"
-#include "write_logs.h"
+#include "write_logs/write_logs.h"
 
-
+//creates a file path for the treasure.txt file
 void create_treasure_path(char* hunt_id){
     if(hunt_id==NULL){
         strcpy(treasure_path,"");
@@ -12,6 +12,7 @@ void create_treasure_path(char* hunt_id){
     sprintf(treasure_path,"%s%s%s",HUNT_DIR_PATH,hunt_id,TREASURE_FILE_NAME);
 }
 
+//creates a file path for the logs.txt file
 void create_logs_path(char* hunt_id){
     if(hunt_id==NULL){
         strcpy(logs_path,"");
@@ -47,9 +48,6 @@ unsigned get_next_treasure_id(char* hunt_id) {
     char file_path[100];
     create_logs_path(hunt_id);
     strcpy(file_path,logs_path);
-    // strcpy(file_path,HUNT_DIR_PATH);
-    // strcat(file_path,hunt_id);
-    // strcat(file_path,LOGS_FILE_NAME);
     int fd = open(file_path, O_RDWR);
     if (fd < 0) {
         perror("open logs.txt failed");
@@ -78,7 +76,8 @@ unsigned get_next_treasure_id(char* hunt_id) {
     close(fd);
     return current_id;
 }
-
+//total hunts number
+//this function returns the total treasures from a hunt at a moment, the number is stored in the logs file
 unsigned get_total_hunts(char* hunt_id){
     char file_path[FILE_PATH_SIZE];
     create_logs_path(hunt_id);
@@ -106,7 +105,7 @@ unsigned get_total_hunts(char* hunt_id){
     sscanf(p,"TOTAL TREASURES:%u",&current_hunts);
     return current_hunts;
 }
-
+//this function modifies the total hunts number
 void modify_total_hunts(char* hunt_id, unsigned total){
     char file_path[FILE_PATH_SIZE];
     create_logs_path(hunt_id);
@@ -129,7 +128,7 @@ void modify_total_hunts(char* hunt_id, unsigned total){
     sscanf(buffer, "ID COUNT:%u", &current_id);
     sprintf(buffer,"ID COUNT:%u\nTOTAL TREASURES:%u\n",current_id,total);
     lseek(fd,0,SEEK_SET);
-    if(write(fd,buffer,strlen(buffer)-1)!=strlen(buffer)-1){
+    if((int)write(fd,buffer,strlen(buffer)-1)!=(int)strlen(buffer)-1){
         perror("write logs.txt failed");
         close(fd);
         return;
@@ -137,12 +136,7 @@ void modify_total_hunts(char* hunt_id, unsigned total){
     close(fd);
 }
 
-int check_data(Treasure t){
-    if(t.clue_text[strlen(t.clue_text)-2]=='\n'){
-        t.clue_text[strlen(t.clue_text)-1] = '\0';
-    }
-    return (-180 <= t.longitude && t.longitude <=180) && (-90<= t.latitude && t.latitude <= 90);
-}
+//user_name functions
 // the function checks if the user name is in the users file, in the resources folder
 
 int check_user_name(char* user_name){
@@ -193,13 +187,35 @@ void add_username(char* user_name){
     close(f);
 }
 
+/////////////
+//add_hunt
+////////////
+
+int check_data(Treasure* t){
+    if(t->user_name[strlen(t->user_name)-1]==' '){
+        t->user_name[strlen(t->user_name)-1] = '\0';
+    }
+    if(t->clue_text[strlen(t->clue_text)-2]=='\n'){
+        t->clue_text[strlen(t->clue_text)-1] = '\0';
+    }
+    if(!(-180 <= t->longitude && t->longitude <=180)){
+        printf("The longitude should be between -180 and 180\n");
+        return 0;
+    }
+    if(!(-90<= t->latitude && t->latitude <= 90)){
+        printf("The longitude should be between -90 and 90\n");
+        return 0;
+    }
+    return 1;
+}
+
 
 
 //writes data into the treasure file and into the log file
 void write_data(Treasure t,char* hunt_id){
     char s[200];
     int size=sprintf(s,"ID:%u\nuser name:%s\nlatitude:%.2f--longitude:%.2f\nclue:%svalue:%d\n\n",t.treasureID,t.user_name,t.latitude,t.longitude,t.clue_text,t.value);
-    char file1[40], file2[40];
+    char file1[40];
     create_treasure_path(hunt_id);
     strcpy(file1,treasure_path);
     int f1=open(file1,O_WRONLY, S_IWGRP);
@@ -213,21 +229,10 @@ void write_data(Treasure t,char* hunt_id){
         return;
     }
     close(f1);
-    size=sprintf(s,"added hunt with id: %u and username: %s\n",t.treasureID,t.user_name);
-    create_logs_path(hunt_id);
-    strcpy(file2,logs_path);
-    int f2=open(file2,O_WRONLY,S_IWGRP);
-    if(f2<0){
-        perror("failed to open logs.txt");
-        return;
-    }
-    lseek(f2,0,SEEK_END);
-    if(write(f2,s,size)!=size){
-        perror("error in writing into a file");
-        return;
-    }
-    close(f2);
+    write_add_log(hunt_id,t.treasureID,t.user_name);
 }
+
+
 //ads a new hunt, if the username is new
 void add_hunt(char* hunt_id){
     printf("Please type the treasure data:\nUser name: ");
@@ -258,7 +263,8 @@ void add_hunt(char* hunt_id){
         printf("Wrong data\n");
         return;
     }
-    if(check_data(t)==0){
+    if(check_data(&t)==0){
+        printf("The treasure wasn't added\n");
         return;
     }
     if(!search_hunt_id(hunt_id)){
@@ -266,14 +272,14 @@ void add_hunt(char* hunt_id){
         create_logged_hunt_symlink(hunt_id);
         add_username(t.user_name);
     }
-    if(!check_user_name(t.user_name)){
-        add_username(t.user_name);
-    }
     modify_total_hunts(hunt_id,get_total_hunts(hunt_id) + 1);
     t.treasureID=get_next_treasure_id(hunt_id);
     write_data(t,hunt_id);
     printf("\nThe treasure, with the ID: %d was succesfully added to hunt %s\n",t.treasureID,hunt_id);
 }
+/////////////
+//list_hunt
+////////////
 
 //prints the entire hunt
 void list_hunt(char* hunt_id){
@@ -328,7 +334,7 @@ int find_tresure_in_file(char* file_path, char* treasure_id){
         return -1;
     }
     int size=0;
-    char *p,buffer[200];
+    char *p,buffer[2*BUFFER_SIZE];
     int file_pos;
     size=read(f,buffer,15);
     buffer[size]='\0';
@@ -350,7 +356,7 @@ void view_treasure(char* hunt_id,char*treasure_id){
         printf("This hunt doesn't exist\n");
         return;
     }
-    char file_path[100],buffer[200];
+    char file_path[BUFFER_SIZE],buffer[2*BUFFER_SIZE];
     create_treasure_path(hunt_id);
     strcpy(file_path,treasure_path);
     int seek_pos = find_tresure_in_file(file_path,treasure_id);//returns the position where the treasure start in the file
@@ -378,41 +384,16 @@ void view_treasure(char* hunt_id,char*treasure_id){
     write_view_log(hunt_id,treasure_id);
     
 }
-
-void remove_hunt(char* hunt_id){
-    if(search_hunt_id(hunt_id)==0){
-        printf("This hunt doesn't exists\n");
-        return;
-    }
-    char file_path[50];
-    create_treasure_path(hunt_id);
-    strcpy(file_path,treasure_path);
-    if(unlink(file_path)!=0){
-        printf("Error at removing a file 1 \n");
-        return;
-    }
-    create_logs_path(hunt_id);
-    strcpy(file_path,logs_path);
-    if(unlink(file_path)!=0){
-        printf("Error at removing a file 2 \n");
-        return;
-    }
-    char dir_path[50];
-    sprintf(dir_path,"%s%s",HUNT_DIR_PATH,hunt_id);
-    if(rmdir(dir_path)!=0){
-        printf("error at removing directory\n");
-        return;
-    }
-    printf("The hunt has been removed\n");
-}
-
+/////////////
+//remove_treasure
+////////////
 
 void remove_treasure(char* hunt_id,char*treasure_id){
     if(search_hunt_id(hunt_id)==0){
         printf("This hunt doesn't exist\n");
         return;
     }
-    char file_path[100],buffer[1000];
+    char file_path[BUFFER_SIZE],buffer[10*BUFFER_SIZE];
     create_treasure_path(hunt_id);
     strcpy(file_path,treasure_path);
     int seek_pos = find_tresure_in_file(file_path,treasure_id); //returns the position where the treasure start in the file
@@ -450,6 +431,44 @@ void remove_treasure(char* hunt_id,char*treasure_id){
     close(f);
     modify_total_hunts(hunt_id,get_total_hunts(hunt_id) - 1);
 }
+/////////////
+//remove_hunt
+////////////
+void remove_hunt(char* hunt_id){
+    if(search_hunt_id(hunt_id)==0){
+        printf("This hunt doesn't exists\n");
+        return;
+    }
+    char file_path[50];
+    create_treasure_path(hunt_id);
+    strcpy(file_path,treasure_path);
+    if(unlink(file_path)!=0){
+        printf("Error at removing treasure file\n");
+        return;
+    }
+    strcpy(file_path,"logs/logged_hunt-");
+    strcat(file_path,hunt_id);
+    if(unlink(file_path)!=0){
+        printf("Error at removing symlink\n");
+        return;
+    }
+    create_logs_path(hunt_id);
+    strcpy(file_path,logs_path);
+    if(unlink(file_path)!=0){
+        printf("Error at removing logs file\n");
+        return;
+    }
+    char dir_path[50];
+    sprintf(dir_path,"%s%s",HUNT_DIR_PATH,hunt_id);
+    if(rmdir(dir_path)!=0){
+        printf("error at removing directory\n");
+        return;
+    }
+    printf("The hunt has been removed\n");
+}
+///////////
+//all_hunts
+//this function search for all the hunts and prints the number of treasures in each hunt
 
 void print_all_hunts(){
     DIR* d = opendir(HUNTS_PATH);
@@ -463,7 +482,13 @@ void print_all_hunts(){
         if(entry->d_type == DT_DIR && strncmp(entry->d_name,"hunt:",5)==0){
             get_total_hunts(entry->d_name + 5);
             printf("\n");
-            printf("%s -- %u treasures\n",entry->d_name,get_total_hunts(entry->d_name + 5));
+            unsigned total=get_total_hunts(entry->d_name + 5);
+            if(total==1){
+                printf("%s -- %u treasure\n",entry->d_name,total);
+            }
+            else{
+                printf("%s -- %u treasures\n",entry->d_name,total);
+            }
         }
         entry = readdir(d);
     }
@@ -502,15 +527,6 @@ int check_argument(char* s,int arg_count){
     return 2;
 }
 
-void help(){
-    printf("\nThe following arguments could be used:\n");
-    printf("\nadd <hunt_id>: Add a new treasure to the specified hunt. If the hunt doesn't exist, it will be created. The treasure data are introduced fromthe standard input.\n");
-    printf("\nlist <hunt_id>: List all treasures in the specified hunt.\n");
-    printf("\nview <hunt_id> <id>: View details of a specific treasure.\n");
-    printf("\nremove_treasure <hunt_id> <id>: Remove a treasure  from a hunt, if the hunt and the treasure exist.\n");
-    printf("\nremove_hunt <hunt_id>: Remove an entire hunt, if the hunt exists\n\n");
-}
-
 void appeal_function(char** argv,int argc){
     if(strcmp(argv[1],"add")==0  && argc==3){
         add_hunt(argv[2]);
@@ -538,6 +554,16 @@ void appeal_function(char** argv,int argc){
     if(strcmp(argv[1],"all_hunts")==0 && argc==2){
         print_all_hunts();
     }
+}
+
+
+void help(){
+    printf("\nThe following arguments could be used:\n");
+    printf("\nadd <hunt_id>: Add a new treasure to the specified hunt. If the hunt doesn't exist, it will be created. The treasure data are introduced fromthe standard input.\n");
+    printf("\nlist <hunt_id>: List all treasures in the specified hunt.\n");
+    printf("\nview <hunt_id> <id>: View details of a specific treasure.\n");
+    printf("\nremove_treasure <hunt_id> <id>: Remove a treasure  from a hunt, if the hunt and the treasure exist.\n");
+    printf("\nremove_hunt <hunt_id>: Remove an entire hunt, if the hunt exists\n\n");
 }
 
 int main(int argc, char** argv){

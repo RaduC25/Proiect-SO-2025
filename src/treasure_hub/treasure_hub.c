@@ -3,20 +3,22 @@
 #include "treasure_hub.h"
 #include <sys/wait.h>
 
+//the command list for the hub
 const char commands[COMMANDS_NUMBER][20]={"start_monitor","list_hunts","list_treasures","view_treasure","calculate_score","stop_monitor","exit","help",};
 pid_t static monitor_pid = -1;
 int static monitor_running=0;
 int pipe_th2m[2]={0};
 
+//the function that writes from monitor to stdout
 void write_from_monitor(){
     usleep(10000);
-    char buffer[BUFFER_SIZE*5]="";
-    int size = read(pipe_th2m[0],buffer,BUFFER_SIZE*5-1);
+    char buffer[BUFFER_SIZE*10]="";
+    int size = read(pipe_th2m[0],buffer,BUFFER_SIZE*10);
     if(size > 0){
         write(STDOUT_FILENO,buffer,size);
     }
 }
-
+// the function that starts monitor process
 void start_monitor(){
     if(monitor_running){
         write(STDOUT_FILENO,"monitor already running\n",25);
@@ -45,7 +47,7 @@ void start_monitor(){
     write_from_monitor();
 
 }
-
+// the function checks if the command is valid
 int check_command(char* buffer){
     for(int i=0;i<COMMANDS_NUMBER;i++){
         if(strncmp(commands[i],buffer,strlen(commands[i]))==0){
@@ -55,6 +57,7 @@ int check_command(char* buffer){
     return -1;
 }
 
+//the function sends the command to monitor
 void send_command(int command_nr,char* buffer){
     if(monitor_running==0){
         write(STDOUT_FILENO,"[monitor] is not running\n",26);
@@ -80,6 +83,7 @@ void send_command(int command_nr,char* buffer){
     write_from_monitor();
 }
 
+//the function sends a signal that stops the process
 void stop_monitor(){
     if(monitor_running==0){
         write(STDOUT_FILENO,"[monitor] is not running\n",26);
@@ -96,6 +100,8 @@ void stop_monitor(){
     usleep(20000);
     write(STDOUT_FILENO,"[monitor] has been stopped\n",28);
 }
+
+//the function checks if the monitor can be stopped
 void exit_program(){
     if(monitor_running){
         write(STDOUT_FILENO,"[monitor] is still running\nTo exit, stop the monitor first\n>",61);
@@ -105,9 +111,10 @@ void exit_program(){
 }
 
 void help(){
-    write(STDOUT_FILENO,"The program has started\n\nThe available commands are:\n\n- start_monitor\n\n- list_hunts: list the hunts and the total number of treasures in each\n\n- list_treasures: show the information about all treasures in a hunt\n\n- view_treasure: show the information about a treasure in hunt\n\n- calculate_score: calculates all users score from a specified hunt\n\n- stop_monitor\n\n- exit\n\n- help\n\nWrite command:\n",394);
+    write(STDOUT_FILENO,"The program has started\n\nThe available commands are:\n\n- start_monitor\n\n- list_hunts: list the hunts and the total number of treasures in each\n\n- list_treasures: show the information about all treasures in a hunt\n\n- view_treasure: show the information about a treasure in hunt\n\n- calculate_score: calculates all users score from a specified hunt\n\n- stop_monitor\n\n- exit\n\n- help\n\nWrite command:\n>",395);
 }
 
+//the function choose what command to be send to monitor, via command_file.txt, using SIGUSR1 signal
 void do_command(int command_nr,char* buffer){
     if(command_nr < 0 && command_nr >= COMMANDS_NUMBER){
         return;
@@ -133,7 +140,7 @@ void do_command(int command_nr,char* buffer){
         send_command(command_nr,buffer);
     }
 }
-
+// the function read the commands from stdin and terminates the process only if the exit command is received and the monitor is stopped
 void read_command(){
     char buffer[100]="";
     int command_number=0;

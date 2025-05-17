@@ -6,12 +6,15 @@
 #include <fcntl.h>
 #include "treasure_hub.h"
 
+//the available commands for the monitor
 const char monitor_commands[4][20]={"list_hunts","list_treasures","view_treasure","calculate_score"};
 int received_sigusr1 = 0, received_sigusr2 = 0;
 struct sigaction sa1 = {0}, sa2 ={0};
 int pipe_m2cs[2]={0};
 int pipe_m2tm[2]={0};
 
+
+//the functions for handling SIGUSR1 and SIGUSR2
 void handle_sigusr1() {
     received_sigusr1 = 1;
 }
@@ -19,15 +22,15 @@ void handle_sigusr1() {
 void handle_sigusr2() {
     received_sigusr2 = 1;
 }
-
+//the monitor writes the data from the treasure manager pipe to the treasure hub pipe
 void write_result_from_pipe(){
-    char buffer[BUFFER_SIZE*5]="";
-    int size = read(pipe_m2tm[0],buffer,BUFFER_SIZE*5-1);
+    char buffer[BUFFER_SIZE*10]="";
+    int size = read(pipe_m2tm[0],buffer,BUFFER_SIZE*10);
     if(size > 0){
         write(STDOUT_FILENO,buffer,size);
     }
 }
-
+//the monitor writes the data from the calculate score pipe to the treasure hub pipe
 void write_result_from_cs_pipe(){
     char buffer[BUFFER_SIZE*5]="";
     int size = read(pipe_m2cs[0],buffer,BUFFER_SIZE*5-1);
@@ -129,7 +132,7 @@ void calculate_score(const char* hunt_id){
     write_result_from_cs_pipe();
     write(STDOUT_FILENO,"\n[monitor] The calculate_score command has been executed\n>",59);
 }
-
+//the function choose a valid command to start the treasure manager process
 void choose_command( char* buffer) {
     if (strncmp(buffer, monitor_commands[0],strlen(monitor_commands[0])) == 0) {
         list_hunts();
@@ -160,9 +163,6 @@ void choose_command( char* buffer) {
             calculate_score(hunt_id);            
         }
         else{
-            sprintf(buffer,"%d",r);
-            write(STDOUT_FILENO,buffer,strlen(buffer));
-            //printf("%s-%s-%s\n",command,hunt_id,treasure_id);
             write(STDOUT_FILENO,"[monitor] The calculate_score command isn't used properly\n>",60);
         }
         return;
@@ -184,13 +184,17 @@ void read_file(){
     }
     choose_command(buffer);
 }
+//the monitor loop that waits for a signal 
 
 void monitor_loop(){
     while (1) {
-        pause(); // Wait for a signal
+        pause(); // wait for a signal
 
         if (received_sigusr2) {
             close(pipe_m2tm[1]);
+            close(pipe_m2cs[1]);
+            close(pipe_m2tm[0]);
+            close(pipe_m2cs[0]);
             write(STDOUT_FILENO,"[monitor] Stop signal received. Exiting...\n",44);
             usleep(100000); // Sleep before exiting
             exit(2);
@@ -202,7 +206,7 @@ void monitor_loop(){
         }
     }
 }
-
+//initiating signals and creating pipes
 void init_signals(){
     sa1.sa_handler = handle_sigusr1;
     sigaction(SIGUSR1, &sa1, NULL);

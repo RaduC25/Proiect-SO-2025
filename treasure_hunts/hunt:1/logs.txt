@@ -1,0 +1,10 @@
+ID COUNT:6
+TOTAL TREASURES:5
+added hunt with id: 0 and username: marius  -- Date: 17-05-2025 - Time: 22:06:55
+added hunt with id: 1 and username: ion -- Date: 17-05-2025 - Time: 22:08:33
+added hunt with id: 2 and username: marius  -- Date: 17-05-2025 - Time: 22:08:41
+added hunt with id: 3 and username: ion -- Date: 17-05-2025 - Time: 22:08:48
+treasure: 1, from hunt: 1 was printed -- Date: 17-05-2025 - Time: 22:11:24
+added hunt with id: 4 and username: marius  -- Date: 17-05-2025 - Time: 22:29:01
+added hunt with id: 5 and username: marius -- Date: 18-05-2025 - Time: 00:02:22
+treasure: 4, from hunt: 1 was deleted -- Date: 18-05-2025 - Time: 00:22:25

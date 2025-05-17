@@ -1,0 +1,31 @@
+
+ID:0
+user name:marius
+latitude:1.00--longitude:1.00
+clue:1
+value:1
+
+ID:1
+user name:ion
+latitude:1.00--longitude:1.00
+clue:1
+value:1
+
+ID:2
+user name:marius
+latitude:1.00--longitude:1.00
+clue:1
+value:1
+
+ID:3
+user name:ion
+latitude:1.00--longitude:1.00
+clue:1
+value:1
+
+ID:5
+user name:marius
+latitude:2.00--longitude:2.00
+clue:ok
+value:100
+

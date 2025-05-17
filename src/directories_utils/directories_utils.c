@@ -59,6 +59,7 @@ void create_logs_dir(){
         return;
     }
 }
+
 //the function creates a hunt directory and the 2 files
 int make_hunt_dir(char* hunt_id){
     char s[100];

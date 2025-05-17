@@ -1,0 +1,19 @@
+
+ID:1
+user name:andrei
+latitude:20.00--longitude:20.00
+clue:ok
+value:100
+
+ID:2
+user name:radu
+latitude:10.00--longitude:10.00
+clue:ok
+value:1000
+
+ID:3
+user name:radu
+latitude:1.00--longitude:1.00
+clue:ok
+value:100
+

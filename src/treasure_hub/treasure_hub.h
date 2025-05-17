@@ -4,6 +4,9 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
+#ifndef TREASURE_HUB_H
+#define TREASURE_HUB_H
+
 #define BUFFER_SIZE 100
 #define COMMAND_FILE "resources/command_file.txt"
 #define CALCULATE_SCORE_SCRIPT "./bin/calculate_score.sh"
@@ -31,4 +34,4 @@ void send_command(int command_nr,char* buffer);
 
 void help();
 
-
+#endif
